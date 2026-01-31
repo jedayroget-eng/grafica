@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Gráfica Pro - V3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- VARIÁVEIS E BASE --- */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding-bottom: 50px; }
+        * { box-sizing: border-box; outline: none; }
+
+        /* --- HEADER & NAVBAR --- */
+        .navbar {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        /* --- LAYOUT PRINCIPAL --- */
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        
+        /* --- BARRA DE INSERÇÃO --- */
+        .input-bar {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--primary);
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 2fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1100px) { .input-bar { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .input-bar { grid-template-columns: 1fr; } }
+
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; color: #64748b; }
+        select, input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+        select:focus, input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        /* --- BOTÕES --- */
+        .btn { padding: 10px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
+        .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+        .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+        /* --- PAPEL DO ORÇAMENTO --- */
+        .paper {
+            background: white;
+            padding: 40px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .paper-header { border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .paper-total { text-align: right; margin-top: 30px; font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0; font-size: 0.8rem; color: #64748b; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; }
+
+        /* ESTILO NOVO: SUBITEM (ARTE VINCULADA) */
+        .sub-item td:first-child {
+            padding-left: 40px; /* Recuo */
+            color: #64748b;     /* Cor mais clara */
+            font-style: italic;
+            position: relative;
+        }
+        /* Seta indicativa css puro */
+        .sub-item td:first-child::before {
+            content: "↳";
+            position: absolute;
+            left: 15px;
+            font-weight: bold;
+            opacity: 0.5;
+        }
+
+        /* --- MODAL (JANELA DE CADASTRO) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background: white; width: 90%; max-width: 900px; height: 85vh;
+            border-radius: 12px; display: flex; flex-direction: column;
+            overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+        .modal-body { flex: 1; padding: 20px; overflow-y: auto; background: #fff; }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
+        .tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: #64748b; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .edit-table { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 15px; }
+        .edit-table th { background: #f8fafc; }
+        .rule-row { display: flex; gap: 10px; margin-bottom: 5px; background: #f8fafc; padding: 5px; border-radius: 6px; }
+
+        @media print {
+            .navbar, .input-bar, .no-print, .btn, .modal-overlay, #historicoContainer { display: none !important; }
+            body, .container { background: white; margin: 0; padding: 0; max-width: 100%; }
+            .paper { box-shadow: none; padding: 0; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar no-print">
+        <div class="brand">🖨️ Sistema Gráfica Pro</div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" onclick="openModal('tabClientes')">👤 Clientes</button>
+            <button class="btn btn-outline" onclick="openModal('tabProdutos')">📦 Produtos</button>
+            <button class="btn btn-primary" onclick="openModal('tabProdutos')">⚙️ Cadastros</button>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <div class="input-bar no-print">
+            <div class="form-group">
+                <label>Selecione o Cliente</label>
+                <select id="selectCli" onchange="updateCliInfo()"></select>
+            </div>
+            <div class="form-group">
+                <label>Selecione o Produto</label>
+                <select id="selectProd"></select>
+            </div>
+            <div class="form-group">
+                <label>Quantidade</label>
+                <input type="number" id="calcQty" value="1000">
+            </div>
+            <div class="form-group">
+                <label>Serviço / Arte (Opcional)</label>
+                <select id="selectArte"></select>
+            </div>
+            <div class="form-group">
+                <label>Pagamento</label>
+                <select id="selectPagamento" onchange="updateOrcamentoVisual()">
+                    <option value="Pix">Pix</option>
+                    <option value="Crédito">Crédito</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-success" onclick="addItem()">➕ ADICIONAR</button>
+            </div>
+        </div>
+
+        <div class="paper" id="areaPrintavel">
+            <div class="paper-header">
+                <div>
+                    <h1 style="margin:0; color:var(--primary)">ORÇAMENTO #<span id="orcNumeroDisplay">000</span></h1>
+                    <p style="margin:5px 0; color:#64748b">Data: <span id="orcData">--/--/--</span></p>
+                </div>
+                <div style="text-align: right;">
+                    <strong>Pagamento:</strong> <span id="resPagamento">Pix</span><br>
+                    <span style="font-size: 0.8rem; color:#ef4444;">Válido por 5 dias</span>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <div style="font-size:0.7rem; font-weight:bold; color:#94a3b8">CLIENTE</div>
+                    <div id="resCliNome" style="font-weight:bold; font-size:1.1rem">---</div>
+                    <div id="resCliDoc" style="font-size:0.9rem">---</div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem; font-weight:bold; color:#94a3b8">CONTATO</div>
+                    <div id="resCliFone">---</div>
+                    <div id="resCliEnd" style="font-size:0.9rem">---</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>DESCRIÇÃO</th>
+                        <th style="text-align: center; width: 80px">QTD</th>
+                        <th style="text-align: right; width: 120px">UNIT (R$)</th>
+                        <th style="text-align: right; width: 120px">TOTAL (R$)</th>
+                        <th class="no-print" style="width: 40px"></th>
+                    </tr>
+                </thead>
+                <tbody id="orcBody">
+                    </tbody>
+            </table>
+
+            <div class="paper-total">
+                Total: <span id="resTotal">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div class="no-print" style="text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-danger" onclick="limparOrcamento()">🗑️ Limpar</button>
+            <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn btn-success" onclick="finalizarOrcamento()">💾 Salvar no Histórico</button>
+        </div>
+
+        <div id="historicoContainer" class="no-print" style="margin-top: 50px;">
+            <h3>📜 Histórico de Pedidos</h3>
+            <div style="background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">
+                <table class="edit-table" id="historicoTable" style="margin:0; border:none">
+                    <thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Valor</th><th style="text-align:right">Ações</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="margin:0">Gerenciamento do Sistema</h3>
+                <button class="btn btn-sm btn-danger" onclick="closeModal()">Fechar (X)</button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="openTab(event, 'tabProdutos')">📦 Produtos & Preços</button>
+                    <button class="tab-btn" onclick="openTab(event, 'tabClientes')">👤 Clientes</button>
+                    <button class="tab-btn" onclick="openTab(event, 'tabArtes')">🎨 Serviços/Artes</button>
+                </div>
+
+                <div id="tabProdutos" class="tab-content active">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <input type="hidden" id="editProdId">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div><label>Nome Produto:</label><input type="text" id="prodNome"></div>
+                            <div><label>Preço Base:</label><input type="number" id="prodPreco" step="0.001"></div>
+                        </div>
+                        <label>Tabela de Atacado (Regras de Preço):</label>
+                        <div id="rulesContainer"></div>
+                        <button class="btn btn-sm btn-outline" onclick="addRuleField()">+ Faixa de Preço</button>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn btn-primary" id="btnSalvarProd" onclick="saveProduct()">Salvar Produto</button>
+                            <button class="btn btn-danger" id="btnCancelaProd" onclick="resetProdForm()" style="display:none">Cancelar Edição</button>
+                        </div>
+                    </div>
+                    <table class="edit-table" id="prodTable"><tbody></tbody></table>
+                </div>
+
+                <div id="tabClientes" class="tab-content">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <input type="hidden" id="editCliId">
+                        <input type="text" id="cliNome" placeholder="Nome Completo" style="margin-bottom: 10px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="cliDoc" placeholder="CPF/CNPJ">
+                            <input type="text" id="cliFone" placeholder="WhatsApp">
+                        </div>
+                        <input type="text" id="cliEnd" placeholder="Endereço" style="margin-bottom: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary" id="btnSalvarCli" onclick="saveCliente()">Salvar Cliente</button>
+                            <button class="btn btn-danger" id="btnCancelaCli" onclick="resetCliForm()" style="display:none">Cancelar</button>
+                        </div>
+                    </div>
+                    <table class="edit-table" id="cliTable"><tbody></tbody></table>
+                </div>
+
+                <div id="tabArtes" class="tab-content">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <input type="hidden" id="editArteId">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="arteNome" placeholder="Nome do Serviço (ex: Criação de Arte)">
+                            <input type="number" id="artePreco" step="0.001" placeholder="R$">
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary" id="btnSalvarArte" onclick="saveArte()">Salvar Serviço</button>
+                            <button class="btn btn-danger" id="btnCancelaArte" onclick="resetArteForm()" style="display:none">Cancelar</button>
+                        </div>
+                    </div>
+                    <table class="edit-table" id="arteTable"><tbody></tbody></table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- LÓGICA DO SISTEMA ---
+    let products = JSON.parse(localStorage.getItem('grafica_prods')) || [];
+    let artes = JSON.parse(localStorage.getItem('grafica_artes')) || [];
+    let clientes = JSON.parse(localStorage.getItem('grafica_clis')) || [];
+    let historico = JSON.parse(localStorage.getItem('grafica_historico')) || [];
+    let orcamentoItens = [];
+
+    // MODAL FUNCTIONS
+    function openModal(tabName) {
+        document.getElementById('settingsModal').style.display = 'flex';
+        if(tabName) openTab(null, tabName);
+    }
+    function closeModal() {
+        document.getElementById('settingsModal').style.display = 'none';
+        render(); // Atualiza selects
+    }
+    function openTab(evt, tabName) {
+        let tabcontent = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontent.length; i++) tabcontent[i].style.display = "none";
+        let tablinks = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < tablinks.length; i++) tablinks[i].className = tablinks[i].className.replace(" active", "");
+        document.getElementById(tabName).style.display = "block";
+        if(evt) evt.currentTarget.className += " active";
+        else {
+            const btns = document.querySelectorAll('.tab-btn');
+            if(tabName === 'tabProdutos') btns[0].className += " active";
+            if(tabName === 'tabClientes') btns[1].className += " active";
+            if(tabName === 'tabArtes') btns[2].className += " active";
+        }
+    }
+
+    // --- CRUD FUNÇÕES ---
+    function saveCliente() {
+        const id = document.getElementById('editCliId').value;
+        const cli = { id: id ? parseInt(id) : Date.now(), nome: document.getElementById('cliNome').value, doc: document.getElementById('cliDoc').value || '---', fone: document.getElementById('cliFone').value || '---', end: document.getElementById('cliEnd').value || '---' };
+        if(!cli.nome) return alert("Nome obrigatório");
+        if(id) { clientes[clientes.findIndex(c => c.id == id)] = cli; } else { clientes.push(cli); }
+        localStorage.setItem('grafica_clis', JSON.stringify(clientes)); resetCliForm(); renderModalTables();
+    }
+    function editCliente(id) {
+        const c = clientes.find(x => x.id == id);
+        document.getElementById('editCliId').value = c.id; document.getElementById('cliNome').value = c.nome; document.getElementById('cliDoc').value = c.doc; document.getElementById('cliFone').value = c.fone; document.getElementById('cliEnd').value = c.end;
+        document.getElementById('btnSalvarCli').innerText = "Atualizar"; document.getElementById('btnCancelaCli').style.display = "block";
+    }
+    function resetCliForm() { document.getElementById('editCliId').value = ""; document.getElementById('cliNome').value = ""; document.getElementById('cliDoc').value = ""; document.getElementById('cliFone').value = ""; document.getElementById('cliEnd').value = ""; document.getElementById('btnSalvarCli').innerText = "Salvar Cliente"; document.getElementById('btnCancelaCli').style.display = "none"; }
+
+    function saveArte() {
+        const id = document.getElementById('editArteId').value;
+        const arte = { id: id ? parseInt(id) : Date.now(), nome: document.getElementById('arteNome').value, preco: parseFloat(document.getElementById('artePreco').value) };
+        if(!arte.nome || isNaN(arte.preco)) return;
+        if(id) { artes[artes.findIndex(a => a.id == id)] = arte; } else { artes.push(arte); }
+        localStorage.setItem('grafica_artes', JSON.stringify(artes)); resetArteForm(); renderModalTables();
+    }
+    function editArte(id) {
+        const a = artes.find(x => x.id == id);
+        document.getElementById('editArteId').value = a.id; document.getElementById('arteNome').value = a.nome; document.getElementById('artePreco').value = a.preco;
+        document.getElementById('btnCancelaArte').style.display = "block";
+    }
+    function resetArteForm() { document.getElementById('editArteId').value = ""; document.getElementById('arteNome').value = ""; document.getElementById('artePreco').value = ""; document.getElementById('btnCancelaArte').style.display = "none"; }
+
+    function saveProduct() {
+        const id = document.getElementById('editProdId').value;
+        const qtys = document.querySelectorAll('.rule-qty'); const prices = document.querySelectorAll('.rule-price');
+        let rules = []; qtys.forEach((q, i) => { if(q.value) rules.push({ qty: parseInt(q.value), price: parseFloat(prices[i].value) }); });
+        const prod = { id: id ? parseInt(id) : Date.now(), nome: document.getElementById('prodNome').value, precoBase: parseFloat(document.getElementById('prodPreco').value), rules: rules.sort((a,b)=>b.qty-a.qty) };
+        if(!prod.nome || isNaN(prod.precoBase)) return;
+        if(id) { products[products.findIndex(p => p.id == id)] = prod; } else { products.push(prod); }
+        localStorage.setItem('grafica_prods', JSON.stringify(products)); resetProdForm(); renderModalTables();
+    }
+    function editProd(id) {
+        const p = products.find(x => x.id == id);
+        document.getElementById('editProdId').value = p.id; document.getElementById('prodNome').value = p.nome; document.getElementById('prodPreco').value = p.precoBase;
+        const container = document.getElementById('rulesContainer'); container.innerHTML = '';
+        if(p.rules.length === 0) addRuleField();
+        else p.rules.forEach(r => { const div = document.createElement('div'); div.className = 'rule-row'; div.innerHTML = `<input type="number" class="rule-qty" value="${r.qty}"><input type="number" class="rule-price" step="0.001" value="${r.price}"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>`; container.appendChild(div); });
+        document.getElementById('btnSalvarProd').innerText = "Atualizar"; document.getElementById('btnCancelaProd').style.display = "block";
+    }
+    function resetProdForm() { document.getElementById('editProdId').value = ""; document.getElementById('prodNome').value = ""; document.getElementById('prodPreco').value = ""; document.getElementById('rulesContainer').innerHTML = ''; addRuleField(); document.getElementById('btnSalvarProd').innerText = "Salvar Produto"; document.getElementById('btnCancelaProd').style.display = "none"; }
+    function addRuleField() { const div = document.createElement('div'); div.className = 'rule-row'; div.innerHTML = `<input type="number" class="rule-qty" placeholder="Qtd"><input type="number" class="rule-price" step="0.001" placeholder="R$ Un."><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>`; document.getElementById('rulesContainer').appendChild(div); }
+
+    // --- OPERAÇÃO ---
+    function render() {
+        document.getElementById('orcData').innerText = new Date().toLocaleDateString();
+        const prox = historico.length > 0 ? Math.max(...historico.map(h => h.numero)) + 1 : 1;
+        document.getElementById('orcNumeroDisplay').innerText = prox.toString().padStart(3,'0');
+
+        document.getElementById('selectCli').innerHTML = '<option value="">-- Cliente --</option>' + clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+        document.getElementById('selectProd').innerHTML = '<option value="">-- Produto --</option>' + products.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+        document.getElementById('selectArte').innerHTML = '<option value="0">Sem Arte</option>' + artes.map(a=>`<option value="${a.preco}">${a.nome}</option>`).join('');
+        
+        renderModalTables();
+        renderHistorico();
+    }
+
+    function renderModalTables() {
+        const cliT = document.querySelector('#cliTable tbody'); cliT.innerHTML = '';
+        clientes.forEach(c => cliT.innerHTML += `<tr><td>${c.nome}</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editCliente(${c.id})">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_clis', ${c.id})">X</button></td></tr>`);
+        
+        const artT = document.querySelector('#arteTable tbody'); artT.innerHTML = '';
+        artes.forEach(a => artT.innerHTML += `<tr><td>${a.nome} (R$ ${a.preco.toFixed(3)})</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editArte(${a.id})">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_artes', ${a.id})">X</button></td></tr>`);
+
+        const prdT = document.querySelector('#prodTable tbody'); prdT.innerHTML = '';
+        products.forEach(p => prdT.innerHTML += `<tr><td>${p.nome} (Base: ${p.precoBase})</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editProd(${p.id})">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_prods', ${p.id})">X</button></td></tr>`);
+    }
+
+    function updateCliInfo() {
+        const c = clientes.find(x => x.id == document.getElementById('selectCli').value);
+        if(c) { 
+            document.getElementById('resCliNome').innerText = c.nome; document.getElementById('resCliDoc').innerText = c.doc; 
+            document.getElementById('resCliFone').innerText = c.fone; document.getElementById('resCliEnd').innerText = c.end; 
+        }
+    }
+
+    function addItem() {
+        const pId = document.getElementById('selectProd').value; 
+        const qty = parseInt(document.getElementById('calcQty').value) || 0;
+        const aPreco = parseFloat(document.getElementById('selectArte').value) || 0;
+        const aNome = document.getElementById('selectArte').options[document.getElementById('selectArte').selectedIndex].text;
+        
+        const p = products.find(x => x.id == pId); if(!p) return alert("Selecione um produto");
+        let unit = p.precoBase; for(let r of p.rules) { if(qty >= r.qty) { unit = r.price; break; } }
+        
+        // 1. Adiciona o Produto Principal
+        orcamentoItens.push({ desc: p.nome, qty: qty, unit: unit, sub: qty * unit, isSubItem: false });
+        
+        // 2. Se tiver arte, adiciona como subitem vinculado
+        if(aPreco > 0) {
+            orcamentoItens.push({ 
+                desc: `${aNome} (ref. ${p.nome})`, // Vincula no texto
+                qty: 1, 
+                unit: aPreco, 
+                sub: aPreco,
+                isSubItem: true // Vincula visualmente
+            });
+        }
+        
+        renderOrcamento();
+    }
+
+    function renderOrcamento() {
+        const b = document.getElementById('orcBody'); 
+        b.innerHTML = ''; 
+        let t = 0;
+        orcamentoItens.forEach((item, i) => { 
+            t += item.sub; 
+            // Adiciona classe 'sub-item' se for arte
+            const rowClass = item.isSubItem ? 'sub-item' : '';
+            
+            b.innerHTML += `
+            <tr class="${rowClass}">
+                <td>${item.desc}</td>
+                <td align="center">${item.qty}</td>
+                <td align="right">R$ ${item.unit.toFixed(3)}</td>
+                <td align="right">R$ ${item.sub.toFixed(2)}</td>
+                <td class="no-print"><button class="btn btn-sm btn-danger" onclick="orcamentoItens.splice(${i},1);renderOrcamento()">X</button></td>
+            </tr>`; 
+        });
+        document.getElementById('resTotal').innerText = `R$ ${t.toLocaleString('pt-br', {minimumFractionDigits: 2})}`;
+    }
+
+    function finalizarOrcamento() {
+        if(orcamentoItens.length === 0) return alert("Vazio!");
+        const num = parseInt(document.getElementById('orcNumeroDisplay').innerText);
+        const orc = { numero: num, data: document.getElementById('orcData').innerText, cliente: { nome: document.getElementById('resCliNome').innerText, doc: document.getElementById('resCliDoc').innerText, fone: document.getElementById('resCliFone').innerText, end: document.getElementById('resCliEnd').innerText }, total: document.getElementById('resTotal').innerText, pagamento: document.getElementById('selectPagamento').value, itens: [...orcamentoItens] };
+        
+        const idx = historico.findIndex(h => h.numero === num);
+        if(idx !== -1) historico[idx] = orc; else historico.push(orc);
+        
+        localStorage.setItem('grafica_historico', JSON.stringify(historico)); alert("Salvo!"); renderHistorico();
+    }
+
+    function renderHistorico() {
+        const b = document.querySelector('#historicoTable tbody'); b.innerHTML = '';
+        [...historico].reverse().forEach(h => b.innerHTML += `<tr><td>#${h.numero}</td><td>${h.data}</td><td>${h.cliente.nome}</td><td>${h.total}</td><td style="text-align:right"><button class="btn btn-sm btn-primary" onclick="carregarOrc(${h.numero})">Ver</button> <button class="btn btn-sm btn-danger" onclick="deleteHistorico(${h.numero})">X</button></td></tr>`);
+    }
+
+    function carregarOrc(n) { 
+        const h = historico.find(x => x.numero == n); 
+        document.getElementById('orcNumeroDisplay').innerText = h.numero.toString().padStart(3,'0'); 
+        document.getElementById('resCliNome').innerText = h.cliente.nome; document.getElementById('resCliDoc').innerText = h.cliente.doc; 
+        document.getElementById('resCliFone').innerText = h.cliente.fone; document.getElementById('resCliEnd').innerText = h.cliente.end; 
+        document.getElementById('resPagamento').innerText = h.pagamento; 
+        orcamentoItens = [...h.itens]; renderOrcamento(); 
+        document.getElementById('areaPrintavel').scrollIntoView(); 
+    }
+    
+    function deleteItem(k, id) { if(confirm('Apagar?')) { localStorage.setItem(k, JSON.stringify(JSON.parse(localStorage.getItem(k)).filter(i => i.id !== id))); location.reload(); }}
+    function deleteHistorico(n) { if(confirm('Apagar histórico?')) { historico = historico.filter(x => x.numero != n); localStorage.setItem('grafica_historico', JSON.stringify(historico)); renderHistorico(); }}
+    function updateOrcamentoVisual() { document.getElementById('resPagamento').innerText = document.getElementById('selectPagamento').value; }
+    function limparOrcamento() { orcamentoItens = []; location.reload(); }
+
+    addRuleField(); 
+    render();
+</script>
+</body>
+</html>
