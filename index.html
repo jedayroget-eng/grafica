@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Gráfica Pro - V4.1 (Com ESC)</title>
+    <title>Sistema Gráfica Pro - V4.2 (Com Estoque e Ordenação)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* --- VARIÁVEIS (COM SUPORTE A DARK MODE) --- */
@@ -18,7 +18,6 @@
             --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             --input-bg: #ffffff;
         }
-
         /* --- TEMA ESCURO --- */
         body.dark-mode {
             --primary: #3b82f6;
@@ -31,7 +30,6 @@
             --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
             --input-bg: #0f172a;
         }
-
         body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding-bottom: 50px; transition: background 0.3s, color 0.3s; }
         * { box-sizing: border-box; outline: none; }
 
@@ -126,7 +124,6 @@
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 10px; border-bottom: 2px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
         td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
-
         .sub-item td:first-child { padding-left: 40px; color: var(--text-muted); font-style: italic; position: relative; }
         .sub-item td:first-child::before { content: "↳"; position: absolute; left: 15px; font-weight: bold; opacity: 0.5; }
 
@@ -149,7 +146,6 @@
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
         .tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: var(--text-muted); }
         .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -179,7 +175,6 @@
     </style>
 </head>
 <body>
-
     <div id="loading">💾 Processando...</div>
 
     <!-- TELA DE LOGIN -->
@@ -215,7 +210,6 @@
         </div>
 
         <div class="container">
-
             <div class="input-bar no-print">
                 <!-- BUSCA CLIENTE COM LUPA -->
                 <div class="form-group input-with-icon">
@@ -315,7 +309,6 @@
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -327,7 +320,6 @@
                 <button class="btn btn-sm btn-danger" onclick="closeModal()">Fechar (X)</button>
             </div>
             <div class="modal-body">
-
                 <div class="tabs">
                     <button class="tab-btn active" onclick="openTab(event, 'tabProdutos')">📦 Produtos & Preços</button>
                     <button class="tab-btn" onclick="openTab(event, 'tabClientes')">👤 Clientes</button>
@@ -338,9 +330,10 @@
                 <div id="tabProdutos" class="tab-content active">
                     <div style="background: var(--bg-body); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                         <input type="hidden" id="editProdId">
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                             <div><label>Nome Produto:</label><input type="text" id="prodNome"></div>
                             <div><label>Preço Base:</label><input type="number" id="prodPreco" step="0.001"></div>
+                            <div><label>Estoque:</label><input type="number" id="prodEstoque" placeholder="0"></div>
                         </div>
                         <label>Tabela de Atacado (Regras de Preço):</label>
                         <div id="rulesContainer"></div>
@@ -351,7 +344,20 @@
                             <button class="btn btn-danger" id="btnCancelaProd" onclick="resetProdForm()" style="display:none">Cancelar Edição</button>
                         </div>
                     </div>
-                    <div class="search-box"><input type="text" placeholder="Pesquisar produto..." onkeyup="filterTable(this, 'prodTable')"></div>
+
+                    <!-- BARRA DE ORDENAÇÃO E BUSCA -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                        <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                            <input type="text" placeholder="Pesquisar produto..." onkeyup="filterTable(this, 'prodTable')">
+                        </div>
+                        <select style="width: auto;" onchange="sortProducts(this.value)">
+                            <option value="nome">Ordenar: Nome (A-Z)</option>
+                            <option value="valor_cres">Ordenar: Valor (Menor > Maior)</option>
+                            <option value="valor_dec">Ordenar: Valor (Maior > Menor)</option>
+                            <option value="estoque">Ordenar: Estoque</option>
+                        </select>
+                    </div>
+
                     <table class="edit-table" id="prodTable"><tbody></tbody></table>
                 </div>
 
@@ -390,7 +396,6 @@
                     <div class="search-box"><input type="text" placeholder="Pesquisar serviço..." onkeyup="filterTable(this, 'arteTable')"></div>
                     <table class="edit-table" id="arteTable"><tbody></tbody></table>
                 </div>
-
             </div>
         </div>
     </div>
@@ -421,12 +426,9 @@
     let usuarios = [];
 
     // --- FUNÇÕES DE LOGIN E USUÁRIOS ---
-
     async function initUsers() {
-        // Verifica se já existem usuários
         const q = query(collection(db, "usuarios"));
         const snap = await getDocs(q);
-
         if (snap.empty) {
             console.log("Criando usuários padrão...");
             const defaultUsers = [
@@ -445,7 +447,6 @@
     window.fazerLogin = async () => {
         const user = document.getElementById('loginUser').value;
         const pass = document.getElementById('loginPass').value;
-
         showLoading(true);
         const q = query(collection(db, "usuarios"), where("user", "==", user), where("pass", "==", pass));
         const snap = await getDocs(q);
@@ -473,7 +474,6 @@
     };
 
     // --- FUNÇÕES DE DADOS ---
-
     async function loadData(collectionName) {
         showLoading(true);
         const q = query(collection(db, collectionName));
@@ -517,6 +517,10 @@
         products = await loadData("produtos");
         clientes = await loadData("clientes");
         artes = await loadData("artes");
+
+        // ORDENAÇÃO PADRÃO (ALFABÉTICA)
+        products.sort((a, b) => a.nome.localeCompare(b.nome));
+        clientes.sort((a, b) => a.nome.localeCompare(b.nome));
 
         const histRef = collection(db, "historico");
         const qHist = query(histRef, orderBy("numero", "desc"));
@@ -568,8 +572,10 @@
         const prod = { 
             nome: document.getElementById('prodNome').value, 
             precoBase: parseFloat(document.getElementById('prodPreco').value), 
+            estoque: parseInt(document.getElementById('prodEstoque').value) || 0, // NOVO CAMPO
             rules: rules.sort((a,b)=>b.qty-a.qty) 
         };
+
         if(!prod.nome || isNaN(prod.precoBase)) return;
         await saveData("produtos", prod, id || null);
         resetProdForm();
@@ -579,7 +585,6 @@
         if(orcamentoItens.length === 0) return alert("Vazio!");
         const maxNum = historico.length > 0 ? Math.max(...historico.map(h => h.numero)) : 0;
         const nextNum = maxNum + 1;
-
         const orc = { 
             numero: nextNum, 
             data: document.getElementById('orcData').innerText, 
@@ -593,7 +598,6 @@
             pagamento: document.getElementById('selectPagamento').value, 
             itens: [...orcamentoItens] 
         };
-
         await saveData("historico", orc);
         alert("Salvo na nuvem com sucesso!");
     };
@@ -613,6 +617,7 @@
         document.getElementById('editCliId').value = c.id; document.getElementById('cliNome').value = c.nome; document.getElementById('cliDoc').value = c.doc; document.getElementById('cliFone').value = c.fone; document.getElementById('cliEnd').value = c.end;
         document.getElementById('btnSalvarCli').innerText = "Atualizar"; document.getElementById('btnCancelaCli').style.display = "block";
     };
+
     window.resetCliForm = () => { document.getElementById('editCliId').value = ""; document.getElementById('cliNome').value = ""; document.getElementById('cliDoc').value = ""; document.getElementById('cliFone').value = ""; document.getElementById('cliEnd').value = ""; document.getElementById('btnSalvarCli').innerText = "Salvar Cliente"; document.getElementById('btnCancelaCli').style.display = "none"; };
 
     window.editArte = (id) => {
@@ -620,17 +625,33 @@
         document.getElementById('editArteId').value = a.id; document.getElementById('arteNome').value = a.nome; document.getElementById('artePreco').value = a.preco;
         document.getElementById('btnCancelaArte').style.display = "block";
     };
+
     window.resetArteForm = () => { document.getElementById('editArteId').value = ""; document.getElementById('arteNome').value = ""; document.getElementById('artePreco').value = ""; document.getElementById('btnCancelaArte').style.display = "none"; };
 
     window.editProd = (id) => {
         const p = products.find(x => x.id == id);
-        document.getElementById('editProdId').value = p.id; document.getElementById('prodNome').value = p.nome; document.getElementById('prodPreco').value = p.precoBase;
+        document.getElementById('editProdId').value = p.id; 
+        document.getElementById('prodNome').value = p.nome; 
+        document.getElementById('prodPreco').value = p.precoBase;
+        document.getElementById('prodEstoque').value = p.estoque || 0; // Carrega estoque
+
         const container = document.getElementById('rulesContainer'); container.innerHTML = '';
         if(p.rules && p.rules.length > 0) p.rules.forEach(r => { const div = document.createElement('div'); div.className = 'rule-row'; div.innerHTML = `<input type="number" class="rule-qty" value="${r.qty}"><input type="number" class="rule-price" step="0.001" value="${r.price}"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>`; container.appendChild(div); });
         else addRuleField();
+
         document.getElementById('btnSalvarProd').innerText = "Atualizar"; document.getElementById('btnCancelaProd').style.display = "block";
     };
-    window.resetProdForm = () => { document.getElementById('editProdId').value = ""; document.getElementById('prodNome').value = ""; document.getElementById('prodPreco').value = ""; document.getElementById('rulesContainer').innerHTML = ''; addRuleField(); document.getElementById('btnSalvarProd').innerText = "Salvar Produto"; document.getElementById('btnCancelaProd').style.display = "none"; };
+
+    window.resetProdForm = () => { 
+        document.getElementById('editProdId').value = ""; 
+        document.getElementById('prodNome').value = ""; 
+        document.getElementById('prodPreco').value = ""; 
+        document.getElementById('prodEstoque').value = ""; 
+        document.getElementById('rulesContainer').innerHTML = ''; 
+        addRuleField(); 
+        document.getElementById('btnSalvarProd').innerText = "Salvar Produto"; 
+        document.getElementById('btnCancelaProd').style.display = "none"; 
+    };
 
     window.addRuleField = () => { const div = document.createElement('div'); div.className = 'rule-row'; div.innerHTML = `<input type="number" class="rule-qty" placeholder="Qtd"><input type="number" class="rule-price" step="0.001" placeholder="R$ Un."><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>`; document.getElementById('rulesContainer').appendChild(div); };
 
@@ -643,8 +664,23 @@
         });
     };
 
+    // --- NOVA FUNÇÃO DE ORDENAÇÃO ---
+    window.sortProducts = (criteria) => {
+        if(criteria === 'nome') {
+            products.sort((a, b) => a.nome.localeCompare(b.nome));
+        } else if (criteria === 'valor_cres') {
+            products.sort((a, b) => a.precoBase - b.precoBase);
+        } else if (criteria === 'valor_dec') {
+            products.sort((a, b) => b.precoBase - a.precoBase);
+        } else if (criteria === 'estoque') {
+            products.sort((a, b) => (b.estoque || 0) - (a.estoque || 0)); // Maior estoque primeiro
+        }
+        renderModalTables();
+    };
+
     window.openModal = (tabName) => { document.getElementById('settingsModal').style.display = 'flex'; if(tabName) openTab(null, tabName); };
     window.closeModal = () => { document.getElementById('settingsModal').style.display = 'none'; render(); };
+
     window.openTab = (evt, tabName) => {
         let tabcontent = document.getElementsByClassName("tab-content");
         for (let i = 0; i < tabcontent.length; i++) tabcontent[i].style.display = "none";
@@ -674,7 +710,6 @@
         // Pega valor do input list de produtos
         const pVal = document.getElementById('inputBuscaProd').value;
         const p = products.find(x => x.nome === pVal);
-
         if(!p) return alert("Selecione um produto válido da lista");
 
         const qty = parseInt(document.getElementById('calcQty').value) || 0;
@@ -689,6 +724,7 @@
         if(aPreco > 0) {
             orcamentoItens.push({ desc: `${aNome} (ref. ${p.nome})`, qty: 1, unit: aPreco, sub: aPreco, isSubItem: true });
         }
+
         renderOrcamento();
         // Limpa campos
         document.getElementById('inputBuscaProd').value = '';
@@ -742,7 +778,10 @@
         artes.forEach(a => artT.innerHTML += `<tr><td>${a.nome} (R$ ${a.preco.toFixed(3)})</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editArte('${a.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_artes', '${a.id}')">X</button></td></tr>`);
 
         const prdT = document.querySelector('#prodTable tbody'); prdT.innerHTML = '';
-        products.forEach(p => prdT.innerHTML += `<tr><td>${p.nome} (Base: ${p.precoBase})</td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editProd('${p.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_prods', '${p.id}')">X</button></td></tr>`);
+        products.forEach(p => {
+            const estoque = p.estoque ? p.estoque : 0;
+            prdT.innerHTML += `<tr><td>${p.nome} <br><span style="font-size:0.8rem; color:var(--text-muted)">Base: R$${p.precoBase} | Est: ${estoque}</span></td><td style="text-align:right"><button class="btn btn-sm btn-outline" onclick="editProd('${p.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('grafica_prods', '${p.id}')">X</button></td></tr>`;
+        });
     }
 
     function renderHistorico() {
@@ -768,7 +807,6 @@
     if(localStorage.getItem('grafica_theme') === 'dark') {
         document.body.classList.add('dark-mode');
     }
-
 </script>
 </body>
 </html>
