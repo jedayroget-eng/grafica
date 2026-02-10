@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Gráfica Pro - V4.2 (Com Estoque e Ordenação)</title>
+    <title>Sistema Gráfica Pro - V4.3 (Drag & Drop e Edição)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* --- VARIÁVEIS (COM SUPORTE A DARK MODE) --- */
@@ -102,7 +102,7 @@
         .btn-danger { background: #ef4444; color: white; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
         .btn-outline:hover { background: var(--bg-body); border-color: var(--text-muted); }
-        .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-left: 2px; }
 
         /* Botão Dark Mode */
         .theme-toggle { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-main); padding: 5px; border-radius: 50%; }
@@ -124,8 +124,25 @@
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 10px; border-bottom: 2px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
         td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
-        .sub-item td:first-child { padding-left: 40px; color: var(--text-muted); font-style: italic; position: relative; }
-        .sub-item td:first-child::before { content: "↳"; position: absolute; left: 15px; font-weight: bold; opacity: 0.5; }
+
+        /* Estilos de Drag and Drop */
+        .draggable-row { cursor: grab; }
+        .draggable-row:active { cursor: grabbing; background: var(--bg-body); }
+        .draggable-row.dragging { opacity: 0.5; background: var(--border); }
+
+        /* Input editável na tabela */
+        .editable-qty {
+            width: 70px;
+            padding: 4px;
+            text-align: center;
+            border: 1px solid transparent;
+            background: transparent;
+            font-weight: bold;
+        }
+        .editable-qty:hover, .editable-qty:focus {
+            border: 1px solid var(--border);
+            background: var(--bg-body);
+        }
 
         /* --- MODAL --- */
         .modal-overlay {
@@ -171,6 +188,7 @@
             .navbar, .input-bar, .no-print, .btn, .modal-overlay, #historicoContainer, #loginScreen { display: none !important; }
             body, .container, .paper { background: white !important; color: black !important; margin: 0; padding: 0; max-width: 100%; box-shadow: none; }
             #appContent { display: block !important; }
+            .editable-qty { border: none; text-align: center; width: auto; padding: 0; }
         }
     </style>
 </head>
@@ -279,11 +297,12 @@
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 30px" class="no-print"></th> <!-- Handle Drag -->
                             <th>DESCRIÇÃO</th>
-                            <th style="text-align: center; width: 80px">QTD</th>
+                            <th style="text-align: center; width: 100px">QTD</th>
                             <th style="text-align: right; width: 120px">UNIT (R$)</th>
                             <th style="text-align: right; width: 120px">TOTAL (R$)</th>
-                            <th class="no-print" style="width: 40px"></th>
+                            <th class="no-print" style="width: 90px; text-align: center;">AÇÕES</th>
                         </tr>
                     </thead>
                     <tbody id="orcBody"></tbody>
@@ -730,14 +749,109 @@
         document.getElementById('inputBuscaProd').value = '';
     };
 
+    // --- FUNÇÕES DE MANIPULAÇÃO DO ORÇAMENTO (CORRIGIDAS) ---
+
+    window.removeOrcItem = (index) => {
+        orcamentoItens.splice(index, 1);
+        renderOrcamento();
+    };
+
+    window.duplicateOrcItem = (index) => {
+        const item = orcamentoItens[index];
+        // Cria uma cópia do objeto para não referenciar o mesmo
+        orcamentoItens.splice(index + 1, 0, { ...item });
+        renderOrcamento();
+    };
+
+    window.updateItemQty = (index, newQty) => {
+        const item = orcamentoItens[index];
+        item.qty = parseInt(newQty);
+        item.sub = item.qty * item.unit;
+        renderOrcamento();
+    };
+
+    // Drag and Drop Logic
+    let dragSrcEl = null;
+
+    function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+        this.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        this.classList.add('over');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('over');
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) e.stopPropagation();
+
+        const dragIdx = parseInt(dragSrcEl.getAttribute('data-index'));
+        const dropIdx = parseInt(this.getAttribute('data-index'));
+
+        if (dragIdx !== dropIdx) {
+            // Move o item no array
+            const itemToMove = orcamentoItens[dragIdx];
+            orcamentoItens.splice(dragIdx, 1);
+            orcamentoItens.splice(dropIdx, 0, itemToMove);
+            renderOrcamento();
+        }
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove('dragging');
+        let items = document.querySelectorAll('.draggable-row');
+        items.forEach(function (item) {
+            item.classList.remove('over');
+        });
+    }
+
     window.renderOrcamento = () => {
         const b = document.getElementById('orcBody'); 
         b.innerHTML = ''; 
         let t = 0;
+
         orcamentoItens.forEach((item, i) => { 
             t += item.sub; 
-            const rowClass = item.isSubItem ? 'sub-item' : '';
-            b.innerHTML += `<tr class="${rowClass}"><td>${item.desc}</td><td align="center">${item.qty}</td><td align="right">R$ ${item.unit.toFixed(3)}</td><td align="right">R$ ${item.sub.toFixed(2)}</td><td class="no-print"><button class="btn btn-sm btn-danger" onclick="orcamentoItens.splice(${i},1);renderOrcamento()">X</button></td></tr>`; 
+            const row = document.createElement('tr');
+            row.className = item.isSubItem ? 'sub-item draggable-row' : 'draggable-row';
+            row.setAttribute('draggable', 'true');
+            row.setAttribute('data-index', i);
+
+            // Eventos de Drag and Drop
+            row.addEventListener('dragstart', handleDragStart, false);
+            row.addEventListener('dragenter', handleDragEnter, false);
+            row.addEventListener('dragover', handleDragOver, false);
+            row.addEventListener('dragleave', handleDragLeave, false);
+            row.addEventListener('drop', handleDrop, false);
+            row.addEventListener('dragend', handleDragEnd, false);
+
+            row.innerHTML = `
+                <td class="no-print" style="cursor: grab; text-align:center; color:var(--text-muted)">☰</td>
+                <td>${item.desc}</td>
+                <td align="center">
+                    <input type="number" class="editable-qty" value="${item.qty}" onchange="updateItemQty(${i}, this.value)">
+                </td>
+                <td align="right">R$ ${item.unit.toFixed(3)}</td>
+                <td align="right">R$ ${item.sub.toFixed(2)}</td>
+                <td class="no-print" style="text-align: center;">
+                    <button class="btn btn-sm btn-success" onclick="duplicateOrcItem(${i})" title="Duplicar">+</button>
+                    <button class="btn btn-sm btn-danger" onclick="removeOrcItem(${i})" title="Remover">X</button>
+                </td>
+            `;
+            b.appendChild(row);
         });
         document.getElementById('resTotal').innerText = `R$ ${t.toLocaleString('pt-br', {minimumFractionDigits: 2})}`;
     };
