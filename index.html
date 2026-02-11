@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Gráfica Pro - V4.3 (Drag & Drop e Edição)</title>
+    <title>Sistema Gráfica Pro - V4.4 (Correção de Preços Dinâmicos)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* --- VARIÁVEIS (COM SUPORTE A DARK MODE) --- */
@@ -725,6 +725,23 @@
         }
     };
 
+    // --- FUNÇÃO AUXILIAR PARA CALCULAR PREÇO ---
+    function getProductPrice(productName, qty) {
+        const p = products.find(x => x.nome === productName);
+        if (!p) return 0; // Se não achar o produto (ex: é um serviço), retorna 0 ou trata diferente
+
+        let unit = p.precoBase;
+        if (p.rules) {
+            for (let r of p.rules) {
+                if (qty >= r.qty) {
+                    unit = r.price;
+                    break;
+                }
+            }
+        }
+        return unit;
+    }
+
     window.addItem = () => {
         // Pega valor do input list de produtos
         const pVal = document.getElementById('inputBuscaProd').value;
@@ -735,8 +752,8 @@
         const aPreco = parseFloat(document.getElementById('selectArte').value) || 0;
         const aNome = document.getElementById('selectArte').options[document.getElementById('selectArte').selectedIndex].text;
 
-        let unit = p.precoBase; 
-        if(p.rules) { for(let r of p.rules) { if(qty >= r.qty) { unit = r.price; break; } } }
+        // Usa a função auxiliar para garantir consistência
+        let unit = getProductPrice(p.nome, qty);
 
         orcamentoItens.push({ desc: p.nome, qty: qty, unit: unit, sub: qty * unit, isSubItem: false });
 
@@ -763,9 +780,36 @@
         renderOrcamento();
     };
 
+    // --- CORREÇÃO PRINCIPAL AQUI ---
     window.updateItemQty = (index, newQty) => {
         const item = orcamentoItens[index];
-        item.qty = parseInt(newQty);
+        const qty = parseInt(newQty);
+
+        if (qty <= 0) return; // Evita quantidade zero ou negativa
+
+        item.qty = qty;
+
+        // Se NÃO for um sub-item (ou seja, é um produto), recalcula o preço unitário baseado nas regras
+        if (!item.isSubItem) {
+            // Tenta achar o produto original pelo nome para pegar as regras de preço
+            const originalProduct = products.find(p => p.nome === item.desc);
+
+            if (originalProduct) {
+                // Recalcula o preço unitário baseado na nova quantidade
+                let newUnit = originalProduct.precoBase;
+                if (originalProduct.rules) {
+                    for (let r of originalProduct.rules) {
+                        if (qty >= r.qty) {
+                            newUnit = r.price;
+                            break;
+                        }
+                    }
+                }
+                item.unit = newUnit;
+            }
+        }
+
+        // Atualiza o subtotal
         item.sub = item.qty * item.unit;
         renderOrcamento();
     };
